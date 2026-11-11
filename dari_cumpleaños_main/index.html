@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Galaxia Dispersa y Carta Secreta</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    body {
+      background-color: #040108;
+      width: 100vw;
+      height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      cursor: pointer;
+    }
+
+    /* Botón de control de música en la esquina */
+    .music-control {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 50;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 179, 222, 0.4);
+      color: #ffb3de;
+      padding: 8px 15px;
+      border-radius: 20px;
+      backdrop-filter: blur(8px);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s ease;
+    }
+
+    .music-control:hover {
+      background: rgba(255, 20, 147, 0.3);
+      border-color: #ff1493;
+    }
+
+    /* Modal del Panel con Clave */
+    .pin-modal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      background: rgba(15, 5, 20, 0.9);
+      border: 1px solid rgba(255, 179, 222, 0.5);
+      box-shadow: 0 0 35px rgba(255, 20, 147, 0.5);
+      backdrop-filter: blur(12px);
+      padding: 25px 30px;
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.35s ease;
+      z-index: 100;
+    }
+
+    .pin-modal.active {
+      opacity: 1;
+      pointer-events: all;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .pin-modal h2 {
+      color: #ffb3de;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .pin-display {
+      display: flex;
+      gap: 12px;
+      margin: 5px 0;
+    }
+
+    .pin-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #ff1493;
+      background: transparent;
+      transition: background 0.2s ease;
+    }
+
+    .pin-dot.filled {
+      background: #ffb3de;
+      box-shadow: 0 0 10px #ff1493;
+    }
+
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .key-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 179, 222, 0.3);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+
+    .key-btn:hover {
+      background: rgba(255, 20, 147, 0.4);
+      border-color: #ff1493;
+    }
+
+    .key-btn:active {
+      transform: scale(0.92);
+    }
+
+    .close-btn {
+      margin-top: 5px;
+      background: transparent;
+      border: none;
+      color: #ffb3de;
+      font-size: 0.85rem;
+      cursor: pointer;
+      opacity: 0.7;
+    }
+
+    .close-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+
+    /* --- CARTA GRANDE CON IMAGEN DE FONDO CONFIGURABLE --- */
+    .letter-modal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.7);
+      width: 90%;
+      max-width: 600px;
+      min-height: 420px;
+      max-height: 85vh;
+      
+      /* AQUÍ CAMBIAS LA IMAGEN DE FONDO DE LA CARTA */
+      background-color: #fff0f6;
+      background-image: url('dari.jpeg'); /* <-- Pon el enlace o ruta de tu imagen aquí */
+      background-size: cover;
+      background-position: center;
+
+      border: 2px solid #ff99dd;
+      box-shadow: 0 0 50px rgba(255, 20, 147, 0.6);
+      border-radius: 24px;
+      padding: 35px 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s;
+      z-index: 200;
+      color: #333;
+      overflow-y: auto;
+    }
+
+    .letter-modal.active {
+      opacity: 1;
+      pointer-events: all;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .letter-modal h3 {
+      font-size: 1.8rem;
+      color: #d63384;
+      margin-bottom: 20px;
+      text-shadow: 0 2px 4px rgba(255, 255, 255, 0.9);
+    }
+
+    .letter-content {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.85); /* Fondo claro semitransparente para leer bien */
+      backdrop-filter: blur(6px);
+      padding: 25px;
+      border-radius: 16px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+
+    .letter-content p {
+      font-size: 1.15rem;
+      line-height: 1.7;
+      color: #2b0018;
+      user-select: text;
+      text-align: justify;
+    }
+
+    .letter-btn {
+      background: #ff1493;
+      color: white;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 25px;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(255, 20, 147, 0.4);
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .letter-btn:hover {
+      background: #e01282;
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Audio de fondo (cambia el 'src' por tu música) -->
+  <audio id="bgMusic" loop preload="auto">
+    <source src="tatto.mp3" type="audio/mpeg">
+  </audio>
+
+  <button class="music-control" id="musicBtn" onclick="toggleMusic()">🎵 Música: ON</button>
+
+  <div id="canvas-container"></div>
+
+  <!-- Panel de Clave -->
+  <div class="pin-modal" id="pinModal">
+    <h2>Ingresa la Clave</h2>
+    <div class="pin-display">
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+    </div>
+    <div class="keypad">
+      <button class="key-btn" onclick="pressKey('1')">1</button>
+      <button class="key-btn" onclick="pressKey('2')">2</button>
+      <button class="key-btn" onclick="pressKey('3')">3</button>
+      <button class="key-btn" onclick="pressKey('4')">4</button>
+      <button class="key-btn" onclick="pressKey('5')">5</button>
+      <button class="key-btn" onclick="pressKey('6')">6</button>
+      <button class="key-btn" onclick="pressKey('7')">7</button>
+      <button class="key-btn" onclick="pressKey('8')">8</button>
+      <button class="key-btn" onclick="pressKey('9')">9</button>
+      <button class="key-btn" onclick="clearPin()">C</button>
+      <button class="key-btn" onclick="pressKey('0')">0</button>
+      <button class="key-btn" onclick="submitPin()">✓</button>
+    </div>
+    <button class="close-btn" onclick="closeModal()">Cancelar</button>
+  </div>
+
+  <!-- Carta Desplegable Grande -->
+  <div class="letter-modal" id="letterModal">
+    <h3>✨ Carta Especial ✨</h3>
+    
+    <div class="letter-content" id="letterContent">
+      <p>
+        ¡Feliz cumpleaños, Dari! 🎉🎂 Que este día esté lleno de alegría, amor y momentos inolvidables. 
+  <p>
+      te recuerdo que si nadie esta orgullos@ de ti, yo siempre voy a estar orgulloso de la gran persona que eres y de todo lo que has logrado.
+      en este dia tan especial como tu y tan bonito te vengo y te digo feliz cumpleaños y que la pases bien y que veas que eres la persona mas querida
+      por tu forma de ser tu forma de hablar y pues que te quiero mucho y que siempre voy a estar orgulloso de ti y que te deseo lo mejor en este dia tan especial como tu feliz cumpleaños
+        </p>
+    </div>
+
+    <button class="letter-btn" onclick="closeLetter()"> atte: PESO PLUMA</button>
+  </div>
+
+  <!-- Three.js y OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+    // --- MANEJO DE MÚSICA AUTOMÁTICA ---
+    const bgMusic = document.getElementById('bgMusic');
+    const musicBtn = document.getElementById('musicBtn');
+    let musicStarted = false;
+
+    function startMusicOnInteraction() {
+      if (!musicStarted) {
+        bgMusic.play().then(() => {
+          musicStarted = true;
+          musicBtn.textContent = '🎵 Música: ON';
+        }).catch(() => {});
+      }
+    }
+
+    window.addEventListener('click', startMusicOnInteraction, { once: true });
+    window.addEventListener('touchstart', startMusicOnInteraction, { once: true });
+
+    function toggleMusic() {
+      if (bgMusic.paused) {
+        bgMusic.play();
+        musicBtn.textContent = '🎵 Música: ON';
+      } else {
+        bgMusic.pause();
+        musicBtn.textContent = '🔇 Música: OFF';
+      }
+    }
+
+    // --- GALAXIA DE PARTÍCULAS DISPERSAS ORIGINAL ---
+    const container = document.getElementById('canvas-container');
+    const pinModal = document.getElementById('pinModal');
+    const letterModal = document.getElementById('letterModal');
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(
+      60,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    camera.position.set(0, 0, 50);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    function createParticleTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+
+      const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');      
+      gradient.addColorStop(0.3, 'rgba(255, 179, 222, 0.85)'); 
+      gradient.addColorStop(0.65, 'rgba(255, 20, 147, 0.35)'); 
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 64, 64);
+
+      const texture = new THREE.Texture(canvas);
+      texture.needsUpdate = true;
+      return texture;
+    }
+
+    const config = {
+      count: 65000,
+      size: 0.5,
+      innerGap: 12,
+      outerRadius: 60,
+      color1: '#ffb3de',
+      color2: '#ff1493'
+    };
+
+    let originalPositions = new Float32Array(config.count * 3);
+    let currentPositions = new Float32Array(config.count * 3);
+    let geometry = null;
+    let particleCloud = null;
+
+    function createDispersedParticles() {
+      geometry = new THREE.BufferGeometry();
+
+      const colors = new Float32Array(config.count * 3);
+      const c1 = new THREE.Color(config.color1);
+      const c2 = new THREE.Color(config.color2);
+
+      for (let i = 0; i < config.count; i++) {
+        const i3 = i * 3;
+
+        const radius = config.innerGap + Math.random() * (config.outerRadius - config.innerGap);
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2) - 1);
+
+        const x = radius * Math.sin(phi) * Math.cos(theta);
+        const y = radius * Math.sin(phi) * Math.sin(theta);
+        const z = radius * Math.cos(phi);
+
+        originalPositions[i3]     = x;
+        originalPositions[i3 + 1] = y;
+        originalPositions[i3 + 2] = z;
+
+        currentPositions[i3]     = x;
+        currentPositions[i3 + 1] = y;
+        currentPositions[i3 + 2] = z;
+
+        const mixedColor = c1.clone().lerp(c2, Math.random());
+        colors[i3]     = mixedColor.r;
+        colors[i3 + 1] = mixedColor.g;
+        colors[i3 + 2] = mixedColor.b;
+      }
+
+      geometry.setAttribute('position', new THREE.BufferAttribute(currentPositions, 3));
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+      const material = new THREE.PointsMaterial({
+        size: config.size,
+        sizeAttenuation: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        vertexColors: true,
+        map: createParticleTexture(),
+        transparent: true
+      });
+
+      particleCloud = new THREE.Points(geometry, material);
+      scene.add(particleCloud);
+    }
+
+    createDispersedParticles();
+
+    // --- INTERACCIÓN Y COMPRESIÓN ---
+    let isPressed = false;
+    let compressionFactor = 0;
+    let modalOpened = false;
+
+    controls.addEventListener('start', () => {
+      if (!modalOpened) isPressed = true;
+    });
+
+    controls.addEventListener('end', () => {
+      if (!modalOpened) isPressed = false;
+    });
+
+    // --- MANEJO DEL PIN ---
+    let currentPin = '';
+    const CORRECT_PIN = '1111';
+
+    function pressKey(num) {
+      if (currentPin.length < 4) {
+        currentPin += num;
+        updatePinDisplay();
+      }
+    }
+
+    function clearPin() {
+      currentPin = '';
+      updatePinDisplay();
+    }
+
+    function updatePinDisplay() {
+      const dots = document.querySelectorAll('.pin-dot');
+      dots.forEach((dot, index) => {
+        if (index < currentPin.length) {
+          dot.classList.add('filled');
+        } else {
+          dot.classList.remove('filled');
+        }
+      });
+    }
+
+    function submitPin() {
+      if (currentPin === CORRECT_PIN) {
+        pinModal.classList.remove('active');
+        setTimeout(() => {
+          letterModal.classList.add('active');
+        }, 300);
+      } else {
+        alert('Clave incorrecta. La clave es 1111');
+        clearPin();
+      }
+    }
+
+    function closeModal() {
+      modalOpened = false;
+      isPressed = false;
+      pinModal.classList.remove('active');
+      clearPin();
+    }
+
+    function closeLetter() {
+      letterModal.classList.remove('active');
+      modalOpened = false;
+      isPressed = false;
+    }
+
+    // --- BUCLE DE ANIMACIÓN ---
+    const clock = new THREE.Clock();
+
+    function animate() {
+      const elapsedTime = clock.getElapsedTime();
+
+      particleCloud.rotation.y = elapsedTime * 0.03;
+      particleCloud.rotation.x = elapsedTime * 0.015;
+
+      if (isPressed) {
+        compressionFactor = THREE.MathUtils.lerp(compressionFactor, 1, 0.08);
+        
+        if (compressionFactor > 0.85 && !modalOpened) {
+          modalOpened = true;
+          isPressed = false;
+          pinModal.classList.add('active');
+        }
+      } else if (!modalOpened) {
+        compressionFactor = THREE.MathUtils.lerp(compressionFactor, 0, 0.06);
+      }
+
+      const positionsAttr = geometry.attributes.position;
+      for (let i = 0; i < config.count; i++) {
+        const i3 = i * 3;
+
+        const origX = originalPositions[i3];
+        const origY = originalPositions[i3 + 1];
+        const origZ = originalPositions[i3 + 2];
+
+        const targetX = origX * 0.02;
+        const targetY = origY * 0.02;
+        const targetZ = origZ * 0.02;
+
+        positionsAttr.array[i3]     = THREE.MathUtils.lerp(origX, targetX, compressionFactor);
+        positionsAttr.array[i3 + 1] = THREE.MathUtils.lerp(origY, targetY, compressionFactor);
+        positionsAttr.array[i3 + 2] = THREE.MathUtils.lerp(origZ, targetZ, compressionFactor);
+      }
+      positionsAttr.needsUpdate = true;
+
+      controls.update();
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    });
+  </script>
+</body>
+</html>
